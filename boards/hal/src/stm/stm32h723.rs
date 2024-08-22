@@ -305,7 +305,7 @@ impl FlashInterface for FlashWriterEraser {
     /// Hal initialization.
     fn hal_init() {}
 
-    fn hal_led_interrupt_on(&self) {
+    fn hal_on_rustboot_start(&self) {
         self.yellow_led.borrow_mut().set_high();
     }
 }
@@ -562,7 +562,7 @@ impl FlashInterface for SimpleFlashWriterEraser {
     /// Hal initialization.
     fn hal_init() {}
 
-    fn hal_led_interrupt_on(&self) {
+    fn hal_on_rustboot_start(&self) {
     }
 }
 

@@ -31,7 +31,7 @@ pub trait FlashInterface {
     fn hal_flash_lock(&self);
     fn hal_flash_write(&self, addr: usize, data: *const u8, len: usize);
     fn hal_flash_erase(&self, addr: usize, len: usize);
-    fn hal_led_interrupt_on(&self);
+    fn hal_on_rustboot_start(&self);
 }
 
 // Arch-specific code
