@@ -1,11 +1,17 @@
 //! Flash  Read, Write and Erase opration for `stm32h723zg`.
 
+use core::borrow::BorrowMut;
 use core::convert::TryInto;
 use core::slice::from_raw_parts;
 use core::{ops::Add, ptr::write_volatile};
 
-use hal::{pac, pac::FLASH};
 use stm32h7xx_hal as hal;
+use hal::{pac, pac::FLASH, prelude::*};
+use crate::stm::stm32h723::hal::gpio::gpioe::Parts;
+use crate::stm::stm32h723::hal::gpio::Pin;
+use crate::stm::stm32h723::hal::gpio::Output;
+
+use core::cell::RefCell;
 
 use crate::FlashInterface;
 use stm32h723zg_constants::*;
@@ -39,12 +45,24 @@ mod stm32h723zg_constants {
 /// Constrained FLASH peripheral
 pub struct FlashWriterEraser {
     pub nvm: FLASH,
+    pub yellow_led: RefCell<Pin<'E', 1, Output>>,
 }
 
 impl FlashWriterEraser {
     pub fn new() -> Self {
+        let dp = pac::Peripherals::take().unwrap();
+        // Constrain and Freeze power
+        let pwr = dp.PWR.constrain();
+        let pwrcfg = pwr.freeze();
+
+        // Constrain and Freeze clock
+        let rcc = dp.RCC.constrain();
+        let ccdr = rcc.sys_ck(100.MHz()).freeze(pwrcfg, &dp.SYSCFG);
+        let gpioe = dp.GPIOE.split(ccdr.peripheral.GPIOE);
+        let mut led_yellow = gpioe.pe1.into_push_pull_output();
         FlashWriterEraser {
-            nvm: pac::Peripherals::take().unwrap().FLASH,
+            nvm: dp.FLASH,
+            yellow_led: RefCell::new(led_yellow),
         }
     }
 }
@@ -286,6 +304,10 @@ impl FlashInterface for FlashWriterEraser {
 
     /// Hal initialization.
     fn hal_init() {}
+
+    fn hal_led_interrupt_on(&self) {
+        self.yellow_led.borrow_mut().set_high();
+    }
 }
 
 struct RefinedUsize<const MIN: u32, const MAX: u32, const VAL: u32>(u32);

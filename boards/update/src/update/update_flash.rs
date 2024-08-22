@@ -272,6 +272,7 @@ where
     Interface: FlashInterface,
 {
     fn rustboot_start(self) -> ! {
+        self.iface.hal_led_interrupt_on();
         let mut boot = PartDescriptor::open_partition(Boot, self).unwrap();
         let updt = PartDescriptor::open_partition(Update, self).unwrap();
 

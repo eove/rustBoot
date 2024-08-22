@@ -13,6 +13,8 @@ use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 use cortex_m_rt::entry;
 
+use core::cell::RefCell;
+
 #[entry]
 fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
@@ -28,9 +30,11 @@ fn main() -> ! {
 
     //GPIO init
     let gpiob = dp.GPIOB.split(ccdr.peripheral.GPIOB);
+    let gpioe = dp.GPIOE.split(ccdr.peripheral.GPIOE);
 
-    // Configure PE1 as output.
+    // Configure PB0 as output.
     let mut led1 = gpiob.pb0.into_push_pull_output();
+    let mut led_yellow = gpioe.pe1.into_push_pull_output();
 
     // Get the delay provider.
     let mut delay = cp.SYST.delay(ccdr.clocks);
@@ -47,7 +51,7 @@ fn main() -> ! {
         count = count + 1;
     }
 
-    let flash_writer = FlashWriterEraser { nvm: flsh };
+    let flash_writer = FlashWriterEraser { nvm: flsh, yellow_led: RefCell::new(led_yellow) };
     let updater = FlashUpdater::new(flash_writer);
 
     match updater.update_trigger() {
