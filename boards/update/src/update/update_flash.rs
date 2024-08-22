@@ -36,6 +36,10 @@ where
     pub fn new(iface: Interface) -> Self {
         FlashUpdater { iface }
     }
+
+    pub fn relase(self) -> Interface {
+        self.iface
+    }
 }
 impl<Interface> FlashApi for &FlashUpdater<Interface>
 where

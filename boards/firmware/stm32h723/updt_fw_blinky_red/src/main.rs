@@ -59,7 +59,7 @@ fn main() -> ! {
     let updater = FlashUpdater::new(flash_writer);
 
     match updater.update_success() {
-        Ok(_v) => { led1.set_high(); /* Turn green LED solid on when success is notified to rustboot */ }
+        Ok(_v) => { updater.relase().yellow_led.borrow_mut().set_high(); /* Turn yellow LED solid on when success is notified to rustboot */ }
         Err(e) => panic!("couldnt trigger update: {}", e),
     }
 
