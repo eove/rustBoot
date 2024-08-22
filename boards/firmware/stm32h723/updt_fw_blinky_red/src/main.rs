@@ -8,12 +8,10 @@ use panic_probe as _;
 
 use stm32h7xx_hal::{pac, prelude::*};
 
-use rustBoot_hal::{stm::stm32h723::FlashWriterEraser, FlashInterface};
+use rustBoot_hal::stm::stm32h723::SimpleFlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 use cortex_m_rt::entry;
-
-use core::cell::RefCell;
 
 #[entry]
 fn main() -> ! {
@@ -55,11 +53,11 @@ fn main() -> ! {
         count = count + 1;
     }
 
-    let flash_writer = FlashWriterEraser { nvm: flsh, yellow_led: RefCell::new(led_yellow) };
+    let flash_writer = SimpleFlashWriterEraser { nvm: flsh };
     let updater = FlashUpdater::new(flash_writer);
 
     match updater.update_success() {
-        Ok(_v) => { updater.relase().yellow_led.borrow_mut().set_high(); /* Turn yellow LED solid on when success is notified to rustboot */ }
+        Ok(_v) => { led_yellow.set_high(); /* Turn yellow LED solid on when success is notified to rustboot */ }
         Err(e) => panic!("couldnt trigger update: {}", e),
     }
 
