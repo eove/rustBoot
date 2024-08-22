@@ -29,7 +29,9 @@ fn main() -> ! {
     //GPIO init
     let gpiob = dp.GPIOB.split(ccdr.peripheral.GPIOB);
 
-    // Configure PE1 as output.
+    // Configure PB0 as output.
+    let mut led1 = gpiob.pb0.into_push_pull_output();
+    // Configure PB14 as output.
     let mut led2 = gpiob.pb14.into_push_pull_output();
 
     // Get the delay provider.
@@ -51,7 +53,7 @@ fn main() -> ! {
     let updater = FlashUpdater::new(flash_writer);
 
     match updater.update_success() {
-        Ok(_v) => {}
+        Ok(_v) => { led1.set_high(); /* Turn green LED solid on when success is notified to rustboot */ }
         Err(e) => panic!("couldnt trigger update: {}", e),
     }
 
