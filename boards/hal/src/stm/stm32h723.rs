@@ -303,10 +303,13 @@ impl FlashInterface for FlashWriterEraser {
     }
 
     /// Hal initialization.
-    fn hal_init() {}
+    fn hal_init() {
+    }
 
     fn hal_on_rustboot_start(&self) {
+        defmt::error!("hello({})", 0);
         self.yellow_led.borrow_mut().set_high();
+        defmt::debug!("finished pre-boot");
     }
 }
 
