@@ -86,6 +86,7 @@ pub fn sign_mcu_image(
                     tag_len[idx] = *byte;
                 });
             header.set_pubkey_tag_len(u32::from_be_bytes(tag_len));
+            println!("Public key digest value: {:?}", pubkey_digest.as_slice());
             header.set_pubkey_digest_value(pubkey_digest.as_slice())?;
 
             // set signature type, len and value

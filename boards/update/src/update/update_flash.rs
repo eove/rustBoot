@@ -321,9 +321,11 @@ where
                     }
                 }
                 ImageType::BootInSuccessState(ref mut img) => {
+                    defmt::debug!("BootInSuccessState");
                     if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                         || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                     {
+                        defmt::debug!("if");
                         match self.rustboot_update(true) {
                             Err(_v) => {
                                 #[cfg(feature = "defmt")]
@@ -339,6 +341,9 @@ where
                                 }
                             }
                         }
+                    }
+                    else {
+                        defmt::debug!("else");
                     }
                 }
                 _ => unreachable!(),

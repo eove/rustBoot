@@ -564,17 +564,20 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                     .ok_or(RustbootError::FieldNotSet)?
                     .fw_size;
                 let res = parse_tlv(self, Tags::Digest256);
+                defmt::debug!("res");
                 let stored_hash = match res {
                     Ok(stored_hash) => {
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
                         if computed_hash.as_slice() != stored_hash {
+                            defmt::debug!("integrity check failed");
                             panic!("..integrity check failed");
                         }
                         integrity_check = true;
                         Some(stored_hash.as_ptr())
                     }
                     Err(e) => {
+                        defmt::debug!("integrity check error");
                         return Err(e);
                     }
                 };
@@ -584,10 +587,14 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                             val.sha_ok = true;
                             val.sha_hash = stored_hash;
                         }
-                        None => return Err(RustbootError::__Nonexhaustive),
+                        None => {
+                            defmt::debug!("integrity check boolean is false");
+                            return Err(RustbootError::__Nonexhaustive)
+                        }
                     }
                     Ok(true)
                 } else {
+                    defmt::debug!("unreachable");
                     Err(RustbootError::Unreachable) // technically should be unreachable
                 }
             }
