@@ -7,11 +7,19 @@ use core::{ops::Add, ptr::write_volatile};
 
 use stm32h7xx_hal as hal;
 use hal::{pac, pac::FLASH, prelude::*};
+use hal::serial::{config::Config, Serial, Rx, Tx};
+use hal::device::USART3;
+
 use crate::stm::stm32h723::hal::gpio::gpioe::Parts;
 use crate::stm::stm32h723::hal::gpio::Pin;
 use crate::stm::stm32h723::hal::gpio::Output;
+use hal::block;
 
 use core::cell::RefCell;
+
+use core2::io::Error;
+//use core2::io::{Read,Write};
+use core::fmt::Write;
 
 use crate::FlashInterface;
 use stm32h723zg_constants::*;
@@ -42,10 +50,18 @@ mod stm32h723zg_constants {
     pub const KB          : u32 = 1024;
 }
 
+type CONSOLE_UART = USART3;
+
+pub struct SerialBiDir<CONSOLE_UART> {
+    pub tx: Tx<CONSOLE_UART>, // pub for troubleshooting only
+    pub rx: Rx<CONSOLE_UART>, // pub for troubleshooting only
+}
+
 /// Constrained FLASH peripheral
 pub struct FlashWriterEraser {
     pub nvm: FLASH,
     pub yellow_led: RefCell<Pin<'E', 1, Output>>,
+    pub serial_console: RefCell<SerialBiDir<CONSOLE_UART>>,
 }
 
 impl FlashWriterEraser {
@@ -59,10 +75,39 @@ impl FlashWriterEraser {
         let rcc = dp.RCC.constrain();
         let ccdr = rcc.sys_ck(100.MHz()).freeze(pwrcfg, &dp.SYSCFG);
         let gpioe = dp.GPIOE.split(ccdr.peripheral.GPIOE);
+        let gpiod = dp.GPIOD.split(ccdr.peripheral.GPIOD);
+        let tx_pin = gpiod.pd8.into_alternate();
+        let rx_pin = gpiod.pd9.into_alternate();
+        let serial = dp.USART3.serial(
+            (tx_pin, rx_pin), 57600.bps(), ccdr.peripheral.USART3, &ccdr.clocks
+        ).unwrap();
+
+        let (mut tx, mut rx) = serial.split();
+
+        writeln!(tx, "Init");
+
+        let mut cycles: u32 = 0x002f_ffff; /* This gives us a timeout of 1s */
+        while (cycles > 0) {
+            match rx.read() {
+                Ok(b) => {
+                    block!(tx.write(b)).expect("write failed"); // echo back chars like terminals
+                    break;
+                }
+                Err(_e) => {
+                    cycles -= 1;
+                    //block!(tx.write('#' as u8)).expect("write failed");
+                    if cycles % 80 == 0 {
+                        //block!(tx.write('\n' as u8)).expect("write failed");
+                    }
+                }
+            }
+        }
+
         let mut led_yellow = gpioe.pe1.into_push_pull_output();
         FlashWriterEraser {
             nvm: dp.FLASH,
             yellow_led: RefCell::new(led_yellow),
+            serial_console: RefCell::new(SerialBiDir { tx, rx }),
         }
     }
 }
@@ -309,11 +354,12 @@ impl FlashInterface for FlashWriterEraser {
     fn hal_on_rustboot_start(&self) {
         defmt::error!("hello({})", 0);
         self.yellow_led.borrow_mut().set_high();
+        writeln!(self.serial_console.borrow_mut().tx, "Start").unwrap();
         defmt::debug!("finished pre-boot");
     }
 }
 
-/// Constrained FLASH peripheral
+/// Constrained FLASH peripheral (simple version for applications, without LED and serial port made available to rustboot)
 pub struct SimpleFlashWriterEraser {
     pub nvm: FLASH,
 }
