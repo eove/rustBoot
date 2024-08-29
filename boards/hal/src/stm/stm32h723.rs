@@ -86,23 +86,6 @@ impl FlashWriterEraser {
 
         writeln!(tx, "Init");
 
-        let mut cycles: u32 = 0x002f_ffff; /* This gives us a timeout of 1s */
-        while (cycles > 0) {
-            match rx.read() {
-                Ok(b) => {
-                    block!(tx.write(b)).expect("write failed"); // echo back chars like terminals
-                    break;
-                }
-                Err(_e) => {
-                    cycles -= 1;
-                    //block!(tx.write('#' as u8)).expect("write failed");
-                    if cycles % 80 == 0 {
-                        //block!(tx.write('\n' as u8)).expect("write failed");
-                    }
-                }
-            }
-        }
-
         let mut led_yellow = gpioe.pe1.into_push_pull_output();
         FlashWriterEraser {
             nvm: dp.FLASH,
@@ -353,9 +336,37 @@ impl FlashInterface for FlashWriterEraser {
 
     fn hal_on_rustboot_start(&self) {
         defmt::error!("hello({})", 0);
-        self.yellow_led.borrow_mut().set_high();
-        writeln!(self.serial_console.borrow_mut().tx, "Start").unwrap();
-        defmt::debug!("finished pre-boot");
+        let mut cycles: u32 = 0x002f_ffff; /* This gives us a timeout of 1s */
+        let mut boot_interrupted = false;
+        let mut serial_console = self.serial_console.borrow_mut();
+        while (cycles > 0) {
+            match serial_console.rx.read() {
+                Ok(b) => {
+                    block!(serial_console.tx.write(b)).expect("write failed"); // echo back chars like terminals
+                    boot_interrupted = true;
+                    break;
+                }
+                Err(_e) => {
+                    cycles -= 1;
+                    //block!(tx.write('#' as u8)).expect("write failed");
+                    if cycles % 80 == 0 {
+                        //block!(tx.write('\n' as u8)).expect("write failed");
+                    }
+                }
+            }
+        }
+        if boot_interrupted {
+            self.yellow_led.borrow_mut().set_high();
+            writeln!(serial_console.tx, "Boot interrupted").unwrap();
+            defmt::debug!("Boot interrupted");
+            loop {
+                cortex_m::asm::bkpt();
+            }
+        }
+        else {
+            writeln!(serial_console.tx, "Start").unwrap();
+            defmt::debug!("Trying to boot firmware");
+        }
     }
 }
 
